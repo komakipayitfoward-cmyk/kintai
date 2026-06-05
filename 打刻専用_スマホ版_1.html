@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>打刻</title>
+<style>
+:root {
+  --green:#2B5A3E; --green-bg:#E8F2EC; --green-text:#1E4430;
+  --red:#9B2222; --red-bg:#FDECEC;
+  --amber:#92570A; --amber-bg:#FDF3E0;
+  --blue:#1A4F7A; --blue-bg:#E6F0F9;
+  --bg:#F7F6F2; --surface:#FFFFFF;
+  --border:#E2E0D8; --text:#1C1B18; --text2:#6B6960;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;width:100%;}
+body{
+  font-family:'Noto Sans JP','Hiragino Sans','Yu Gothic',sans-serif;
+  background:var(--bg); color:var(--text);
+  display:flex; flex-direction:column; min-height:100dvh;
+  -webkit-tap-highlight-color:transparent;
+}
+
+/* ヘッダー */
+.header{
+  background:var(--green); color:white;
+  padding:14px 20px 12px;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.header-title{font-size:16px;font-weight:700;}
+.header-clock{font-size:18px;font-weight:500;font-variant-numeric:tabular-nums;letter-spacing:0.05em;}
+.header-date{font-size:11px;opacity:0.75;text-align:right;margin-top:1px;}
+
+/* メインコンテンツ */
+.main{flex:1;padding:16px;display:flex;flex-direction:column;gap:14px;}
+
+/* 従業員選択 */
+.emp-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:14px;padding:16px;
+}
+.emp-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--text2);margin-bottom:8px;}
+.emp-select{
+  width:100%;font-size:20px;font-weight:600;padding:12px 14px;
+  border:1.5px solid var(--border);border-radius:10px;
+  background:var(--surface);color:var(--text);
+  font-family:inherit;appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%236B6960' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;padding-right:40px;
+}
+.emp-select:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(43,90,62,0.12);}
+
+/* 状態バッジ */
+.status-bar{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:14px;padding:14px 16px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.status-label{font-size:12px;color:var(--text2);}
+.status-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:5px 14px;border-radius:20px;font-size:13px;font-weight:700;
+}
+.status-none{background:var(--bg);color:var(--text2);}
+.status-in{background:var(--green-bg);color:var(--green-text);}
+.status-go{background:var(--amber-bg);color:var(--amber);}
+.status-out{background:#F0F0EE;color:#888;}
+.status-dot{width:7px;height:7px;border-radius:50%;}
+.dot-in{background:var(--green);animation:pulse 2s infinite;}
+.dot-go{background:var(--amber);animation:pulse 2s infinite;}
+.dot-none{background:#CCC;}
+.dot-out{background:#AAA;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+
+/* 時刻一覧 */
+.times-row{display:flex;gap:8px;}
+.time-item{
+  flex:1;background:var(--surface);border:1px solid var(--border);
+  border-radius:10px;padding:10px 10px 8px;text-align:center;
+}
+.time-item-label{font-size:10px;color:var(--text2);margin-bottom:3px;}
+.time-item-val{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:0.02em;}
+.time-item-val.empty{color:#CCC;font-weight:400;}
+
+/* 打刻ボタングリッド */
+.punch-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.punch-btn{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:6px;padding:22px 12px;border-radius:16px;
+  font-size:17px;font-weight:700;font-family:inherit;
+  border:none;cursor:pointer;
+  transition:transform 0.1s,opacity 0.15s;
+  -webkit-user-select:none;user-select:none;
+  min-height:90px;
+}
+.punch-btn:active{transform:scale(0.95);opacity:0.85;}
+.punch-btn:disabled{opacity:0.35;cursor:not-allowed;}
+.punch-btn .icon{font-size:26px;line-height:1;}
+.btn-in{background:var(--green-bg);color:var(--green-text);border:1.5px solid #B8D9C5;}
+.btn-go{background:var(--amber-bg);color:var(--amber);border:1.5px solid #F5D89A;}
+.btn-back{background:var(--blue-bg);color:var(--blue);border:1.5px solid #B8D0E9;}
+.btn-out{background:var(--red-bg);color:var(--red);border:1.5px solid #F5C1C1;}
+
+/* 外出履歴 */
+.outings-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:14px;padding:14px 16px;
+}
+.outings-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--text2);margin-bottom:10px;}
+.outing-row{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 0;border-bottom:1px solid var(--border);font-size:14px;
+}
+.outing-row:last-child{border-bottom:none;}
+.outing-num{
+  background:var(--amber-bg);color:var(--amber);
+  font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;
+  flex-shrink:0;
+}
+.outing-time{font-variant-numeric:tabular-nums;font-weight:600;}
+.outing-arrow{color:var(--text2);}
+.outing-pending{color:var(--amber);font-weight:600;}
+.no-outings{font-size:13px;color:var(--text2);text-align:center;padding:4px 0;}
+
+/* トースト通知 */
+.toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);
+  background:#1C1B18;color:white;
+  padding:12px 22px;border-radius:30px;
+  font-size:14px;font-weight:500;white-space:nowrap;
+  transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  z-index:999;pointer-events:none;max-width:90vw;white-space:normal;text-align:center;
+}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.toast.success{background:var(--green);}
+.toast.error{background:var(--red);}
+
+/* 同期ステータス */
+.sync-badge{
+  position:fixed;top:56px;right:12px;
+  padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;
+  display:none;z-index:100;
+}
+
+/* フッター */
+.footer{
+  padding:12px 16px;text-align:center;
+  font-size:11px;color:var(--text2);
+  border-top:1px solid var(--border);background:var(--surface);
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-title">打刻</div>
+  </div>
+  <div style="text-align:right">
+    <div class="header-clock" id="clock">--:--</div>
+    <div class="header-date" id="date"></div>
+  </div>
+</div>
+
+<div id="sync-badge" class="sync-badge"></div>
+
+<div class="main">
+  <!-- 従業員選択 -->
+  <div class="emp-card">
+    <div class="emp-label">従業員を選択</div>
+    <select class="emp-select" id="emp-sel" onchange="onEmpChange()">
+      <option value="">-- 選択してください --</option>
+    </select>
+  </div>
+
+  <!-- 状態 -->
+  <div class="status-bar" id="status-bar">
+    <span class="status-label">現在の状態</span>
+    <span class="status-badge status-none" id="status-badge">
+      <span class="status-dot dot-none"></span>未選択
+    </span>
+  </div>
+
+  <!-- 本日の打刻時刻 -->
+  <div class="times-row" id="times-row">
+    <div class="time-item">
+      <div class="time-item-label">出勤</div>
+      <div class="time-item-val empty" id="t-in">--:--</div>
+    </div>
+    <div class="time-item">
+      <div class="time-item-label">外出中</div>
+      <div class="time-item-val empty" id="t-go">--:--</div>
+    </div>
+    <div class="time-item">
+      <div class="time-item-label">退勤</div>
+      <div class="time-item-val empty" id="t-out">--:--</div>
+    </div>
+  </div>
+
+  <!-- 打刻ボタン -->
+  <div class="punch-grid">
+    <button class="punch-btn btn-in" id="btn-in" onclick="doPunch('in')">
+      <span class="icon">▶</span>出勤
+    </button>
+    <button class="punch-btn btn-go" id="btn-go" onclick="doPunch('go')">
+      <span class="icon">↗</span>外出
+    </button>
+    <button class="punch-btn btn-back" id="btn-back" onclick="doPunch('back')">
+      <span class="icon">↙</span>復帰
+    </button>
+    <button class="punch-btn btn-out" id="btn-out" onclick="doPunch('out')">
+      <span class="icon">■</span>退勤
+    </button>
+  </div>
+
+  <!-- 外出履歴 -->
+  <div class="outings-card" id="outings-card" style="display:none;">
+    <div class="outings-title">外出・復帰履歴</div>
+    <div id="outings-list"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ========== GAS設定 ==========
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqaMA8MfzcPP_a_L1fydTaLRDbi-2CE9M63vbJB7sNwYL6aFyYexJqYKZcd68lW2Kw/exec'; // ← PC版と同じGAS URLをここに貼り付ける
+
+// ========== STATE ==========
+let employees = [];
+let records = {};
+let settings = { workStart:'09:30', workEnd:'15:00', roundMin:30 };
+let breaks = [
+  {start:'10:10',end:'10:20'},
+  {start:'11:10',end:'11:20'},
+  {start:'12:00',end:'13:00'},
+  {start:'13:50',end:'14:00'},
+];
+
+const pad = n => String(n).padStart(2,'0');
+const todayStr = new Date().toISOString().split('T')[0];
+
+// ========== CLOCK ==========
+function updateClock(){
+  const d = new Date();
+  const dows = ['日','月','火','水','木','金','土'];
+  document.getElementById('clock').textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  document.getElementById('date').textContent =
+    `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())}（${dows[d.getDay()]}）`;
+}
+setInterval(updateClock, 1000); updateClock();
+
+// ========== DATA ==========
+async function loadData(){
+  // ローカル読み込み
+  try{
+    const d = localStorage.getItem('ptPayroll2');
+    if(d){
+      const s = JSON.parse(d);
+      employees = s.employees || [];
+      records   = s.records   || {};
+      if(s.settings) Object.assign(settings, s.settings);
+      if(s.breaks)   breaks = s.breaks;
+    }
+  }catch(e){}
+  // GAS読み込み（JSONP）
+  if(GAS_URL){
+    showSync('sync');
+    try{
+      const [empData, recData] = await Promise.all([
+        gasJsonp('employees'),
+        gasJsonp('records'),
+      ]);
+      if(empData.employees) employees = JSON.parse(empData.employees);
+      if(empData.settings)  Object.assign(settings, JSON.parse(empData.settings));
+      records = {};
+      Object.entries(recData).forEach(([k,v])=>{ try{ records[k]=JSON.parse(v); }catch(e){} });
+      saveLocal();
+      showSync('ok');
+    }catch(e){ showSync('error'); }
+  }
+  renderEmpSelect();
+}
+
+function gasJsonp(sheet, prefix=''){
+  if(!GAS_URL) return Promise.resolve({});
+  return new Promise((resolve)=>{
+    const cb='cb'+Date.now()+Math.random().toString(36).slice(2);
+    const s=document.createElement('script');
+    window[cb]=function(data){ delete window[cb]; if(s.parentNode) s.parentNode.removeChild(s); resolve(data||{}); };
+    s.src=GAS_URL+'?callback='+encodeURIComponent(cb)+'&sheet='+encodeURIComponent(sheet)+'&prefix='+encodeURIComponent(prefix);
+    s.onerror=()=>{ delete window[cb]; resolve({}); };
+    document.head.appendChild(s);
+    setTimeout(()=>{ if(window[cb]){ delete window[cb]; resolve({}); } },8000);
+  });
+}
+
+function saveLocal(){
+  try{ localStorage.setItem('ptPayroll2', JSON.stringify({employees,records,breaks,settings,nextEmpId:99})); }catch(e){}
+}
+
+function gasPost(sheet, action, key, value=''){
+  if(!GAS_URL) return;
+  try{
+    const cb='cb'+Date.now()+Math.random().toString(36).slice(2);
+    window[cb]=function(){ delete window[cb]; if(s.parentNode) s.parentNode.removeChild(s); };
+    const s=document.createElement('script');
+    s.src=GAS_URL+'?callback='+encodeURIComponent(cb)+'&sheet='+encodeURIComponent(sheet)+'&action='+encodeURIComponent(action)+'&key='+encodeURIComponent(key)+'&value='+encodeURIComponent(String(value));
+    document.head.appendChild(s);
+    setTimeout(()=>{ if(s.parentNode) s.parentNode.removeChild(s); },5000);
+  }catch(e){}
+}
+
+// ========== UI ==========
+function renderEmpSelect(){
+  const sel = document.getElementById('emp-sel');
+  sel.innerHTML = '<option value="">-- 選択してください --</option>' +
+    employees.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+  updateDisplay();
+}
+
+function onEmpChange(){ updateDisplay(); }
+
+function getEmpId(){ return parseInt(document.getElementById('emp-sel').value)||0; }
+
+function getRec(){
+  const id = getEmpId();
+  if(!id) return null;
+  return records[`${id}_${todayStr}`] || null;
+}
+
+function updateDisplay(){
+  const rec = getRec();
+  const empId = getEmpId();
+
+  // 打刻時刻表示
+  const inEl  = document.getElementById('t-in');
+  const goEl  = document.getElementById('t-go');
+  const outEl = document.getElementById('t-out');
+
+  inEl.textContent  = rec?.inTime  || '--:--';
+  inEl.className    = 'time-item-val' + (rec?.inTime ? '' : ' empty');
+  outEl.textContent = rec?.outTime || '--:--';
+  outEl.className   = 'time-item-val' + (rec?.outTime ? '' : ' empty');
+
+  const openOuting = (rec?.outings||[]).find(o=>o.go&&!o.back);
+  goEl.textContent  = openOuting ? openOuting.go : '--:--';
+  goEl.className    = 'time-item-val' + (openOuting ? '' : ' empty');
+
+  // 状態バッジ
+  const badge = document.getElementById('status-badge');
+  if(!empId){
+    badge.className='status-badge status-none';
+    badge.innerHTML='<span class="status-dot dot-none"></span>未選択';
+  } else if(!rec?.inTime){
+    badge.className='status-badge status-none';
+    badge.innerHTML='<span class="status-dot dot-none"></span>未出勤';
+  } else if(rec?.outTime){
+    badge.className='status-badge status-out';
+    badge.innerHTML='<span class="status-dot dot-out"></span>退勤済';
+  } else if(openOuting){
+    badge.className='status-badge status-go';
+    badge.innerHTML='<span class="status-dot dot-go"></span>外出中';
+  } else {
+    badge.className='status-badge status-in';
+    badge.innerHTML='<span class="status-dot dot-in"></span>出勤中';
+  }
+
+  // ボタン有効/無効
+  const hasIn   = !!rec?.inTime;
+  const hasOut  = !!rec?.outTime;
+  const inGo    = !!openOuting;
+  const goCount = (rec?.outings||[]).length;
+
+  document.getElementById('btn-in').disabled   = false;
+  document.getElementById('btn-go').disabled   = !hasIn || hasOut || inGo || goCount>=3;
+  document.getElementById('btn-back').disabled = !inGo;
+  document.getElementById('btn-out').disabled  = !hasIn || hasOut;
+
+  // 外出履歴
+  const outings = rec?.outings||[];
+  const card    = document.getElementById('outings-card');
+  const list    = document.getElementById('outings-list');
+  if(outings.length>0){
+    card.style.display='block';
+    list.innerHTML = outings.map((o,i)=>`
+      <div class="outing-row">
+        <span class="outing-num">外出${i+1}</span>
+        <span class="outing-time">${o.go||'--:--'}</span>
+        <span class="outing-arrow">→</span>
+        ${o.back
+          ? `<span class="outing-time">${o.back}</span>`
+          : `<span class="outing-pending">復帰待ち</span>`
+        }
+      </div>`).join('');
+  } else {
+    card.style.display='none';
+  }
+}
+
+// ========== PUNCH ==========
+function doPunch(type){
+  const empId = getEmpId();
+  if(!empId){ showToast('従業員を選択してください','error'); return; }
+  const now = new Date();
+  const t   = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const key = `${empId}_${todayStr}`;
+  let rec = records[key] || {empId,date:todayStr,inTime:'',outTime:'',outings:[]};
+  if(!rec.outings) rec.outings=[];
+  const emp = employees.find(e=>e.id===empId);
+  const name = emp?.name||'';
+
+  if(type==='in'){
+    rec.inTime = t;
+    showToast(`${name}　出勤　${t}`,'success');
+  } else if(type==='out'){
+    if(!rec.inTime){ showToast('出勤記録がありません','error'); return; }
+    rec.outTime = t;
+    showToast(`${name}　退勤　${t}`,'success');
+  } else if(type==='go'){
+    rec.outings.push({go:t,back:''});
+    showToast(`${name}　外出　${t}`,'success');
+  } else if(type==='back'){
+    const open = rec.outings.find(o=>o.go&&!o.back);
+    if(!open){ showToast('外出記録がありません','error'); return; }
+    open.back = t;
+    showToast(`${name}　復帰　${t}`,'success');
+  }
+
+  records[key] = rec;
+  saveLocal();
+  gasPost('records','set',key, JSON.stringify(rec));
+  updateDisplay();
+  // 触覚フィードバック（対応端末のみ）
+  if(navigator.vibrate) navigator.vibrate(30);
+}
+
+// ========== TOAST ==========
+let toastTimer;
+function showToast(msg, type='success'){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast ${type}`;
+  void el.offsetWidth;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.classList.remove('show'), 2500);
+}
+
+// ========== SYNC BADGE ==========
+function showSync(status){
+  const el = document.getElementById('sync-badge');
+  if(status==='sync'){
+    el.style.cssText='position:fixed;top:56px;right:12px;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;z-index:100;background:#E6F0F9;color:#1A4F7A;display:block;';
+    el.textContent='⟳ 同期中';
+  } else if(status==='ok'){
+    el.style.cssText='position:fixed;top:56px;right:12px;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;z-index:100;background:#E8F2EC;color:#2B5A3E;display:block;';
+    el.textContent='✓ 同期完了';
+    setTimeout(()=>el.style.display='none',2000);
+  } else {
+    el.style.cssText='position:fixed;top:56px;right:12px;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;z-index:100;background:#FDECEC;color:#9B2222;display:block;';
+    el.textContent='⚠ 同期エラー';
+    setTimeout(()=>el.style.display='none',4000);
+  }
+}
+
+// ========== INIT ==========
+loadData();
+</script>
+</body>
+</html>
