@@ -983,7 +983,7 @@ function gasGet(sheet, prefix=''){
 
 function saveData(){
   // ローカルにも保存（オフライン対応）
-  try{ localStorage.setItem('ptPayroll2',JSON.stringify({
+  try{ localStorage.setItem('ptPayroll_store2',JSON.stringify({
     employees:state.employees, records:state.records,
     breaks:state.breaks, settings:state.settings, nextEmpId:state.nextEmpId
   })); }catch(e){}
@@ -1000,7 +1000,7 @@ function saveData(){
 
 function saveRecord(key){
   // 単一レコードだけGASに保存（打刻ごとに呼ぶ高速版）
-  try{ localStorage.setItem('ptPayroll2',JSON.stringify({
+  try{ localStorage.setItem('ptPayroll_store2',JSON.stringify({
     employees:state.employees, records:state.records,
     breaks:state.breaks, settings:state.settings, nextEmpId:state.nextEmpId
   })); }catch(e){}
@@ -1018,7 +1018,7 @@ function saveRecord(key){
 async function loadData(){
   // まずローカルから読み込む（即時表示）
   try{
-    const d=localStorage.getItem('ptPayroll2');
+    const d=localStorage.getItem('ptPayroll_store2');
     if(d){
       const s=JSON.parse(d);
       state.employees=s.employees||state.employees;
@@ -1044,7 +1044,7 @@ async function loadData(){
       try{ state.records[key]=JSON.parse(val); }catch(e){}
     });
     // ローカルも更新
-    localStorage.setItem('ptPayroll2',JSON.stringify({
+    localStorage.setItem('ptPayroll_store2',JSON.stringify({
       employees:state.employees, records:state.records,
       breaks:state.breaks, settings:state.settings, nextEmpId:state.nextEmpId
     }));
